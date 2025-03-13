@@ -12,6 +12,7 @@ This starter kit includes the following technologies:
 - [Tailwind CSS](https://tailwindcss.com) - Utility-first CSS framework
 - [shadcn/ui](https://ui.shadcn.com/) - Beautifully designed components built with Radix UI and Tailwind CSS
 - [TypeScript](https://www.typescriptlang.org/) - Strongly typed programming language that builds on JavaScript
+- [BetterAuth](https://www.better-auth.com/docs/introduction) - Authentication and authorization framework
 
 ## Getting Started
 
