@@ -20,16 +20,24 @@ export default function SignUp() {
     e.preventDefault();
     startTransition(async () => {
       try {
-        const { error } = await signUp.email({
-          email,
-          password,
-          name,
-          callbackURL: "/dashboard",
-        });
-
-        if (!error) {
-          router.push("/dashboard");
-        }
+        await signUp.email(
+          {
+            name,
+            email,
+            password,
+            callbackURL: "/dashboard",
+          },
+          {
+            onResponse: () => {},
+            onRequest: () => {},
+            onSuccess: () => {
+              router.push("/verify-email?state=signup");
+            },
+            onError: (ctx) => {
+              alert(ctx.error.message);
+            },
+          },
+        );
       } catch (error) {
         console.error("Email sign-up error:", error);
       }

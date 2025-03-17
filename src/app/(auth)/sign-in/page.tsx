@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { signIn } from "@/lib/auth-client";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 
 export default function SignIn() {
@@ -12,16 +13,31 @@ export default function SignIn() {
   const [password, setPassword] = useState("");
   const [isPending, startTransition] = useTransition();
   const [isGooglePending, startGoogleTransition] = useTransition();
+  const router = useRouter();
 
   const handleEmailSignIn = (e: React.FormEvent) => {
     e.preventDefault();
     startTransition(async () => {
       try {
-        await signIn.email({
-          email,
-          password,
-          callbackURL: "/dashboard",
-        });
+        await signIn.email(
+          {
+            email,
+            password,
+            callbackURL: "/dashboard",
+          },
+          {
+            onResponse: () => {},
+            onRequest: () => {},
+            onSuccess: () => {
+              router.push("/dashboard");
+            },
+            onError: (ctx) => {
+              if (ctx.error.status === 403) {
+                alert("Please verify your email address");
+              }
+            },
+          },
+        );
       } catch (error) {
         console.error("Email sign-in error:", error);
       }
