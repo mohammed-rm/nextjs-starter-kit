@@ -2,12 +2,14 @@ import { Card } from "@/components/ui/card";
 import { AlertCircle, Inbox, Mail } from "lucide-react";
 import { redirect } from "next/navigation";
 
-export default function VerifyEmail({
-  searchParams,
-}: {
-  searchParams: { state: string };
-}) {
-  if (searchParams.state !== "signup") {
+interface PageProps {
+  searchParams: Promise<{ state: string }>;
+}
+
+export default async function VerifyEmail({ searchParams }: PageProps) {
+  const params = await searchParams;
+  
+  if (params.state !== "signup") {
     redirect("/");
   }
 
