@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { deleteUser, useSession } from "@/lib/auth-client";
+import { deleteUser, signOut, updateUser, useSession } from "@/lib/auth-client";
 import { AlertCircle, AlertTriangle, ArrowLeft, Check } from "lucide-react";
 import Link from "next/link";
 import { redirect, useRouter } from "next/navigation";
@@ -22,6 +22,7 @@ export default function ProfilePage() {
   const [isPendingUpdate, startTransition] = useTransition();
   const [isEditing, setIsEditing] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
+  const [errorMessage, setErrorMessage] = useState("");
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [password, setPassword] = useState("");
   const [deleteError, setDeleteError] = useState("");
@@ -42,18 +43,38 @@ export default function ProfilePage() {
   }
 
   const handleSaveProfile = () => {
+    setErrorMessage("");
+
+    if (!name.trim()) {
+      setErrorMessage("Name cannot be empty");
+      return;
+    }
+
     startTransition(async () => {
-      // Here you would implement the API call to update the user profile
-      // For now, we'll just simulate a successful update
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      try {
+        await updateUser(
+          {
+            name: name.trim(),
+          },
+          {
+            onSuccess: () => {
+              setSuccessMessage("Profile updated successfully");
+              setIsEditing(false);
+            },
+            onError: () => {
+              setErrorMessage("Failed to update profile. Please try again.");
+            },
+          },
+        );
 
-      setSuccessMessage("Profile updated successfully");
-      setIsEditing(false);
-
-      // Clear success message after 3 seconds
-      setTimeout(() => {
-        setSuccessMessage("");
-      }, 3000);
+        // Clear success message after 3 seconds
+        setTimeout(() => {
+          setSuccessMessage("");
+        }, 3000);
+      } catch (error) {
+        console.error("Update profile error:", error);
+        setErrorMessage("Failed to update profile. Please try again.");
+      }
     });
   };
 
@@ -151,6 +172,21 @@ export default function ProfilePage() {
           </div>
         )}
 
+        {errorMessage && (
+          <div className="mb-6 rounded-md bg-red-500/20 p-4 shadow-lg">
+            <div className="flex">
+              <div className="flex-shrink-0">
+                <AlertCircle className="h-5 w-5 text-red-400" />
+              </div>
+              <div className="ml-3">
+                <p className="text-sm font-medium text-red-300">
+                  {errorMessage}
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Profile Section */}
         <div className="mb-10 rounded-lg border border-gray-700 bg-gray-800/50 shadow-lg">
           <div className="border-b border-gray-700 px-6 py-4">
@@ -200,7 +236,11 @@ export default function ProfilePage() {
                   <div className="flex gap-3">
                     <Button
                       variant="outline"
-                      onClick={() => setIsEditing(false)}
+                      onClick={() => {
+                        setIsEditing(false);
+                        setName(session?.user?.name || "");
+                        setErrorMessage("");
+                      }}
                       className="border-gray-600 bg-gray-700 text-white hover:bg-gray-600"
                       disabled={isPendingUpdate}
                     >
@@ -285,7 +325,15 @@ export default function ProfilePage() {
                 <Button
                   variant="outline"
                   className="border-gray-600 bg-gray-700 text-white hover:bg-gray-600"
-                  onClick={() => (window.location.href = "/forgot-password")}
+                  onClick={async () => {
+                    await signOut({
+                      fetchOptions: {
+                        onSuccess: () => {
+                          redirect("/forgot-password");
+                        },
+                      },
+                    });
+                  }}
                 >
                   Reset Password
                 </Button>
