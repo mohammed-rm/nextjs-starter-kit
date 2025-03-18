@@ -10,6 +10,7 @@ import {
 import { auth } from "@/lib/auth";
 import { LogOut, Settings } from "lucide-react";
 import { headers } from "next/headers";
+import Link from "next/link";
 
 export default async function DashboardPage() {
   const session = await auth.api.getSession({
@@ -49,8 +50,13 @@ export default async function DashboardPage() {
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator className="my-1.5 bg-slate-800" />
                 <DropdownMenuItem>
-                  <Settings size={16} className="text-slate-400" />
-                  <span>Manage Account</span>
+                  <Link
+                    href="/dashboard/profile"
+                    className="flex items-center justify-center gap-2"
+                  >
+                    <Settings size={16} className="text-slate-400" />
+                    <span>Manage Account</span>
+                  </Link>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator className="my-1.5 bg-slate-800" />
                 <DropdownMenuItem>
