@@ -7,5 +7,6 @@ export default {
   dialect: "sqlite",
   dbCredentials: {
     url: env.DATABASE_URL,
+    authToken: process.env.TURSO_AUTH_TOKEN,
   },
 } satisfies Config;

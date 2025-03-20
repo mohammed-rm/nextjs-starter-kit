@@ -11,7 +11,9 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { deleteUser, signOut, updateUser, useSession } from "@/lib/auth-client";
+import { Loader } from "@/components/ui/loader";
+import { signOut, useSession } from "@/lib/auth-client";
+import { handleDeleteAccount, handleUpdateProfile } from "@/lib/utils";
 import { AlertCircle, AlertTriangle, ArrowLeft, Check } from "lucide-react";
 import Link from "next/link";
 import { redirect, useRouter } from "next/navigation";
@@ -32,6 +34,71 @@ export default function ProfilePage() {
   // Form state
   const [name, setName] = useState("");
 
+  const pageContent = {
+    title: "Profile",
+    backButton: {
+      text: "Back to Dashboard",
+      href: "/dashboard",
+    },
+    sections: {
+      email: {
+        title: "Your Email",
+        emailLabel: "Email address",
+        verified: {
+          text: "Email verified",
+          icon: Check,
+        },
+        notVerified: {
+          text: "Email not verified",
+          icon: AlertCircle,
+        },
+      },
+      userInfo: {
+        title: "User Information",
+        nameLabel: "Name",
+        nameNotSet: "Not set",
+        editButton: "Edit",
+        cancelButton: "Cancel",
+        saveButton: "Save Changes",
+        savingText: "Saving...",
+        createdLabel: "Account Created",
+      },
+      security: {
+        title: "Security",
+        passwordLabel: "Password",
+        passwordMask: "••••••••••••",
+        resetButton: "Reset Password",
+        mfaLabel: "Multi-Factor Authentication (MFA)",
+        mfaDescription:
+          "Protect your account by adding an extra layer of security.",
+        enableMfaButton: "Enable MFA",
+      },
+      dangerZone: {
+        title: "Danger Zone",
+        deleteAccount: {
+          title: "Delete Account",
+          description:
+            "Permanently delete your account and all associated data. This action cannot be undone.",
+          button: "Delete Account",
+          dialog: {
+            title: "Delete Account",
+            description:
+              "This action is permanent and cannot be undone. All your data will be permanently deleted.",
+            instruction: 'Please type "CONFIRM" to delete your account.',
+            confirmLabel: "Confirmation",
+            confirmPlaceholder: 'Type "CONFIRM"',
+            cancelButton: "Cancel",
+            deleteButton: "Delete Account",
+            deletingText: "Deleting...",
+          },
+        },
+      },
+    },
+    loading: {
+      text: "Loading your profile...",
+    },
+  };
+
   // If not authenticated, redirect to sign-in
   if (!isPending && !session) {
     redirect("/sign-in");
@@ -42,70 +109,45 @@ export default function ProfilePage() {
     setName(session.user.name || "");
   }
 
-  const handleSaveProfile = () => {
+  const onSaveProfile = () => {
     setErrorMessage("");
 
-    if (!name.trim()) {
-      setErrorMessage("Name cannot be empty");
-      return;
-    }
+    handleUpdateProfile(
+      {
+        name,
+        onSuccess: () => {
+          setSuccessMessage("Profile updated successfully");
+          setIsEditing(false);
 
-    startTransition(async () => {
-      try {
-        await updateUser(
-          {
-            name: name.trim(),
-          },
-          {
-            onSuccess: () => {
-              setSuccessMessage("Profile updated successfully");
-              setIsEditing(false);
-            },
-            onError: () => {
-              setErrorMessage("Failed to update profile. Please try again.");
-            },
-          },
-        );
-
-        // Clear success message after 3 seconds
-        setTimeout(() => {
-          setSuccessMessage("");
-        }, 3000);
-      } catch (error) {
-        console.error("Update profile error:", error);
-        setErrorMessage("Failed to update profile. Please try again.");
-      }
-    });
+          // Clear success message after 3 seconds
+          setTimeout(() => {
+            setSuccessMessage("");
+          }, 3000);
+        },
+        onError: (message) => {
+          setErrorMessage(message);
+        },
+      },
+      startTransition,
+    );
   };
 
-  const handleDeleteAccount = () => {
+  const onDeleteAccount = () => {
     setDeleteError("");
 
-    if (password !== "CONFIRM") {
-      setDeleteError('Please type "CONFIRM" to delete your account');
-      return;
-    }
-
-    startDeleteTransition(async () => {
-      try {
-        await deleteUser(
-          {},
-          {
-            onSuccess: () => {
-              router.push("/account-deleted");
-            },
-            onError: () => {
-              setDeleteError(
-                "Failed to delete account. Please try again later.",
-              );
-            },
-          },
-        );
-      } catch (error) {
-        console.error("Delete account error:", error);
-        setDeleteError("Failed to delete account. Please try again later.");
-      }
-    });
+    handleDeleteAccount(
+      {
+        confirmation: password,
+        expectedValue: "CONFIRM",
+        onSuccess: () => {
+          router.push("/account-deleted");
+        },
+        onError: (message) => {
+          setDeleteError(message);
+        },
+      },
+      startDeleteTransition,
+    );
   };
 
   // Loading state
@@ -113,28 +155,9 @@ export default function ProfilePage() {
     return (
       <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-slate-900 to-slate-800">
         <div className="flex flex-col items-center justify-center">
-          <svg
-            className="h-10 w-10 animate-spin text-white"
-            xmlns="http://www.w3.org/2000/svg"
-            fill="none"
-            viewBox="0 0 24 24"
-          >
-            <circle
-              className="opacity-25"
-              cx="12"
-              cy="12"
-              r="10"
-              stroke="currentColor"
-              strokeWidth="4"
-            />
-            <path
-              className="opacity-75"
-              fill="currentColor"
-              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-            />
-          </svg>
+          <Loader className="h-10 w-10 text-white" />
           <h2 className="mt-4 text-center text-xl font-medium text-white">
-            Loading your profile...
+            {pageContent.loading.text}
           </h2>
         </div>
       </div>
@@ -145,14 +168,14 @@ export default function ProfilePage() {
     <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 px-4 py-12">
       <div className="mx-auto max-w-3xl">
         <div className="mb-8 flex items-center justify-between">
-          <h1 className="text-3xl font-bold text-white">Profile</h1>
-          <Link href="/dashboard">
+          <h1 className="text-3xl font-bold text-white">{pageContent.title}</h1>
+          <Link href={pageContent.backButton.href}>
             <Button
               variant="outline"
               className="border-gray-600 bg-gray-700 text-white hover:bg-gray-600"
             >
               <ArrowLeft className="mr-2 h-4 w-4" />
-              Back to Dashboard
+              {pageContent.backButton.text}
             </Button>
           </Link>
         </div>
@@ -190,25 +213,27 @@ export default function ProfilePage() {
         {/* Profile Section */}
         <div className="mb-10 rounded-lg border border-gray-700 bg-gray-800/50 shadow-lg">
           <div className="border-b border-gray-700 px-6 py-4">
-            <h2 className="text-xl font-semibold text-white">Your Email</h2>
+            <h2 className="text-xl font-semibold text-white">
+              {pageContent.sections.email.title}
+            </h2>
           </div>
           <div className="p-6">
             <div className="mb-6">
               <h3 className="mb-1 text-sm font-medium text-gray-400">
-                Email address
+                {pageContent.sections.email.emailLabel}
               </h3>
               <p className="text-white">{session?.user?.email}</p>
             </div>
 
             {session?.user?.emailVerified ? (
               <div className="flex items-center gap-2 rounded-md bg-green-500/10 px-3 py-2 text-sm text-green-300">
-                <Check className="h-4 w-4" />
-                <span>Email verified</span>
+                <pageContent.sections.email.verified.icon className="h-4 w-4" />
+                <span>{pageContent.sections.email.verified.text}</span>
               </div>
             ) : (
               <div className="flex items-center gap-2 rounded-md bg-yellow-500/10 px-3 py-2 text-sm text-yellow-300">
-                <AlertCircle className="h-4 w-4" />
-                <span>Email not verified</span>
+                <pageContent.sections.email.notVerified.icon className="h-4 w-4" />
+                <span>{pageContent.sections.email.notVerified.text}</span>
               </div>
             )}
           </div>
@@ -218,12 +243,14 @@ export default function ProfilePage() {
         <div className="mb-10 rounded-lg border border-gray-700 bg-gray-800/50 shadow-lg">
           <div className="border-b border-gray-700 px-6 py-4">
             <h2 className="text-xl font-semibold text-white">
-              User Information
+              {pageContent.sections.userInfo.title}
             </h2>
           </div>
           <div className="p-6">
             <div className="mb-6">
-              <h3 className="mb-1 text-sm font-medium text-gray-400">Name</h3>
+              <h3 className="mb-1 text-sm font-medium text-gray-400">
+                {pageContent.sections.userInfo.nameLabel}
+              </h3>
               {isEditing ? (
                 <div className="mt-2 space-y-4">
                   <Input
@@ -244,39 +271,20 @@ export default function ProfilePage() {
                       className="border-gray-600 bg-gray-700 text-white hover:bg-gray-600"
                       disabled={isPendingUpdate}
                     >
-                      Cancel
+                      {pageContent.sections.userInfo.cancelButton}
                     </Button>
                     <Button
-                      onClick={handleSaveProfile}
+                      onClick={onSaveProfile}
                       className="bg-white text-gray-900 hover:bg-gray-100"
                       disabled={isPendingUpdate}
                     >
                       {isPendingUpdate ? (
                         <div className="flex items-center gap-2">
-                          <svg
-                            className="h-4 w-4 animate-spin text-gray-900"
-                            xmlns="http://www.w3.org/2000/svg"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                          >
-                            <circle
-                              className="opacity-25"
-                              cx="12"
-                              cy="12"
-                              r="10"
-                              stroke="currentColor"
-                              strokeWidth="4"
-                            />
-                            <path
-                              className="opacity-75"
-                              fill="currentColor"
-                              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                            />
-                          </svg>
-                          Saving...
+                          <Loader className="h-4 w-4 text-gray-900" />
+                          {pageContent.sections.userInfo.savingText}
                         </div>
                       ) : (
-                        "Save Changes"
+                        pageContent.sections.userInfo.saveButton
                       )}
                     </Button>
                   </div>
@@ -284,14 +292,15 @@ export default function ProfilePage() {
               ) : (
                 <div className="flex items-center justify-between">
                   <p className="text-white">
-                    {session?.user?.name || "Not set"}
+                    {session?.user?.name ||
+                      pageContent.sections.userInfo.nameNotSet}
                   </p>
                   <Button
                     variant="outline"
                     onClick={() => setIsEditing(true)}
                     className="border-gray-600 bg-gray-700 text-white hover:bg-gray-600"
                   >
-                    Edit
+                    {pageContent.sections.userInfo.editButton}
                   </Button>
                 </div>
               )}
@@ -299,7 +308,7 @@ export default function ProfilePage() {
 
             <div className="mb-6">
               <h3 className="mb-1 text-sm font-medium text-gray-400">
-                Account Created
+                {pageContent.sections.userInfo.createdLabel}
               </h3>
               <p className="text-white">
                 {session?.user?.createdAt
@@ -313,15 +322,19 @@ export default function ProfilePage() {
         {/* Security Section */}
         <div className="mb-10 rounded-lg border border-gray-700 bg-gray-800/50 shadow-lg">
           <div className="border-b border-gray-700 px-6 py-4">
-            <h2 className="text-xl font-semibold text-white">Security</h2>
+            <h2 className="text-xl font-semibold text-white">
+              {pageContent.sections.security.title}
+            </h2>
           </div>
           <div className="p-6">
             <div className="mb-6">
               <h3 className="mb-1 text-sm font-medium text-gray-400">
-                Password
+                {pageContent.sections.security.passwordLabel}
               </h3>
               <div className="flex items-center justify-between">
-                <p className="text-white">••••••••••••</p>
+                <p className="text-white">
+                  {pageContent.sections.security.passwordMask}
+                </p>
                 <Button
                   variant="outline"
                   className="border-gray-600 bg-gray-700 text-white hover:bg-gray-600"
@@ -335,21 +348,21 @@ export default function ProfilePage() {
                     });
                   }}
                 >
-                  Reset Password
+                  {pageContent.sections.security.resetButton}
                 </Button>
               </div>
             </div>
 
             <div className="mb-2">
               <h3 className="mb-1 text-sm font-medium text-gray-400">
-                Multi-Factor Authentication (MFA)
+                {pageContent.sections.security.mfaLabel}
               </h3>
               <p className="mb-4 text-sm text-gray-400">
-                Protect your account by adding an extra layer of security.
+                {pageContent.sections.security.mfaDescription}
               </p>
 
               <Button className="bg-white text-gray-900 hover:bg-gray-100">
-                Enable MFA
+                {pageContent.sections.security.enableMfaButton}
               </Button>
             </div>
           </div>
@@ -358,17 +371,18 @@ export default function ProfilePage() {
         {/* Danger Zone */}
         <div className="rounded-lg border border-red-800/50 bg-red-900/10 shadow-lg">
           <div className="border-b border-red-800/50 px-6 py-4">
-            <h2 className="text-xl font-semibold text-red-300">Danger Zone</h2>
+            <h2 className="text-xl font-semibold text-red-300">
+              {pageContent.sections.dangerZone.title}
+            </h2>
           </div>
           <div className="p-6">
             <div className="flex flex-col space-y-4 sm:flex-row sm:items-center sm:justify-between sm:space-y-0">
               <div>
                 <h3 className="text-base font-medium text-red-300">
-                  Delete Account
+                  {pageContent.sections.dangerZone.deleteAccount.title}
                 </h3>
                 <p className="text-sm text-red-200/70">
-                  Permanently delete your account and all associated data. This
-                  action cannot be undone.
+                  {pageContent.sections.dangerZone.deleteAccount.description}
                 </p>
               </div>
               <Button
@@ -376,7 +390,7 @@ export default function ProfilePage() {
                 className="border-red-800 bg-red-900/20 text-red-300 hover:bg-red-900/40 hover:text-red-200"
                 onClick={() => setDeleteDialogOpen(true)}
               >
-                Delete Account
+                {pageContent.sections.dangerZone.deleteAccount.button}
               </Button>
             </div>
           </div>
@@ -389,22 +403,29 @@ export default function ProfilePage() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-red-300">
               <AlertTriangle className="h-5 w-5 text-red-400" />
-              Delete Account
+              {pageContent.sections.dangerZone.deleteAccount.dialog.title}
             </DialogTitle>
             <DialogDescription className="text-gray-400">
-              This action is permanent and cannot be undone. All your data will
-              be permanently deleted.
+              {pageContent.sections.dangerZone.deleteAccount.dialog.description}
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4 py-4">
             <div className="rounded-md bg-red-900/20 p-3 text-sm text-red-300">
-              <p>Please type "CONFIRM" to delete your account.</p>
+              <p>
+                {
+                  pageContent.sections.dangerZone.deleteAccount.dialog
+                    .instruction
+                }
+              </p>
             </div>
 
             <div className="space-y-2">
               <Label htmlFor="password" className="text-sm text-gray-300">
-                Confirmation
+                {
+                  pageContent.sections.dangerZone.deleteAccount.dialog
+                    .confirmLabel
+                }
               </Label>
               <Input
                 id="password"
@@ -412,7 +433,10 @@ export default function ProfilePage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 className="border-gray-600 bg-gray-700 text-white placeholder:text-gray-500"
-                placeholder='Type "CONFIRM"'
+                placeholder={
+                  pageContent.sections.dangerZone.deleteAccount.dialog
+                    .confirmPlaceholder
+                }
               />
 
               {deleteError && (
@@ -432,40 +456,28 @@ export default function ProfilePage() {
               }}
               className="w-full border-gray-600 bg-gray-700 text-white hover:bg-gray-600 sm:w-auto"
             >
-              Cancel
+              {
+                pageContent.sections.dangerZone.deleteAccount.dialog
+                  .cancelButton
+              }
             </Button>
             <Button
               type="button"
-              onClick={handleDeleteAccount}
+              onClick={onDeleteAccount}
               className="w-full bg-red-600 text-white hover:bg-red-700 sm:w-auto"
               disabled={isDeletingAccount}
             >
               {isDeletingAccount ? (
                 <div className="flex items-center justify-center gap-2">
-                  <svg
-                    className="h-4 w-4 animate-spin text-white"
-                    xmlns="http://www.w3.org/2000/svg"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                  >
-                    <circle
-                      className="opacity-25"
-                      cx="12"
-                      cy="12"
-                      r="10"
-                      stroke="currentColor"
-                      strokeWidth="4"
-                    />
-                    <path
-                      className="opacity-75"
-                      fill="currentColor"
-                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                    />
-                  </svg>
-                  Deleting...
+                  <Loader className="h-4 w-4 text-white" />
+                  {
+                    pageContent.sections.dangerZone.deleteAccount.dialog
+                      .deletingText
+                  }
                 </div>
               ) : (
-                "Delete Account"
+                pageContent.sections.dangerZone.deleteAccount.dialog
+                  .deleteButton
               )}
             </Button>
           </DialogFooter>

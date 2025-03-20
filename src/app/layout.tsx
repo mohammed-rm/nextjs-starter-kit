@@ -1,6 +1,6 @@
 import "@/styles/globals.css";
 
-import { GeistSans } from "geist/font/sans";
+import { geistSans } from "@/fonts";
 import { type Metadata } from "next";
 
 export const metadata: Metadata = {
@@ -16,7 +16,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${GeistSans.variable}`}
+      className={`${geistSans.variable}`}
       suppressHydrationWarning
     >
       <body>{children}</body>
